@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDb, getSetting, todayStr } from '../../../src/lib/db';
 import { addMeasurement } from '../../../src/lib/actions';
+import GrowthChart from '../../../src/components/GrowthChart';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,6 +105,11 @@ export default async function MemberDetail({ params, searchParams }) {
         </table></div>
       </div>
 
+      <div className="card section">
+        <h2>กราฟการเติบโต (Growth Report)</h2>
+        <GrowthChart measurements={measurements} />
+      </div>
+
       <div className="grid cols-2 section">
         <div className="card">
           <h2>บันทึกการวัดตัว</h2>
@@ -148,7 +154,7 @@ export default async function MemberDetail({ params, searchParams }) {
                   <td>{p.course_name}</td>
                   <td className="num">{p.amount.toLocaleString()}฿</td>
                   <td>{p.method}</td>
-                  <td>{p.receipt_no}</td>
+                  <td><Link href={`/receipts/${p.receipt_no}`}>{p.receipt_no}</Link></td>
                 </tr>
               ))}
             </tbody>

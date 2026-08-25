@@ -196,6 +196,11 @@ function seedIfEmpty(db) {
     member.run('PL002', null, 'เอ', 'หญิง', null, null, null, null, null, null, null, null, 'Teen', 'Instagram');
     member.run('PL003', null, 'บี', 'ชาย', null, null, null, null, null, null, null, null, 'Teen', 'LINE');
 
+    const ms = db.prepare('INSERT INTO measurements (member_id, date, height_cm, weight_kg, note) VALUES (?,?,?,?,?)');
+    ms.run('PL001', addDays(todayStr(), -60), 168.8, 69.0, 'วัดแรกเข้า');
+    ms.run('PL001', addDays(todayStr(), -30), 169.5, 69.5, 'วัดประจำเดือน');
+    ms.run('PL001', todayStr(), 170, 70, 'วัดประจำเดือน');
+
     const guardian = db.prepare('INSERT INTO guardians (name, relationship, phone, line_id, email, address, province) VALUES (?,?,?,?,?,?,?)');
     const g1 = guardian.run('คุณนุ่ม', 'แม่', '0906659230', 'AomVIP', 'aomzter@gmail.com',
       'พฤกษาวิลล์ บางนา-อ่อนนุช บางพลี', 'สมุทรปราการ').lastInsertRowid;

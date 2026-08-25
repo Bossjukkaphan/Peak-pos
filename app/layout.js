@@ -13,6 +13,7 @@ const NAV = [
   ['/pos', 'ขายคอร์ส'],
   ['/trials', 'Trial / ตามต่อ'],
   ['/coaches', 'โค้ช'],
+  ['/settings', 'ตั้งค่า'],
 ];
 
 export default function RootLayout({ children }) {

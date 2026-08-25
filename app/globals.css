@@ -124,6 +124,13 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible {
 .chip-actions button { font-size: .72rem; padding: 1px 8px; }
 
 .section { margin-top: 26px; }
+
+@media print {
+  .topbar, .no-print { display: none !important; }
+  body { background: #fff; }
+  .main { padding: 0; }
+  .card { border: none; }
+}
 .receipt-banner {
   background: var(--green-soft); border: 1px solid var(--green); color: var(--green-dark);
   border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; font-weight: 600;

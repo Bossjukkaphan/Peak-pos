@@ -191,6 +191,17 @@ export async function completeFollowup(formData) {
   revalidatePath('/trials');
 }
 
+export async function updateSettings(formData) {
+  const db = getDb();
+  const upsert = db.prepare('INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
+  const threshold = num(formData, 'low_credit_threshold');
+  if (threshold !== null && threshold >= 1) upsert.run('low_credit_threshold', String(threshold));
+  const noShow = s(formData, 'no_show_deducts');
+  if (noShow === '0' || noShow === '1') upsert.run('no_show_deducts', noShow);
+  revalidatePath('/');
+  revalidatePath('/settings');
+}
+
 export async function addCoach(formData) {
   const db = getDb();
   db.prepare('INSERT INTO coaches (name, nickname, rate) VALUES (?,?,?)')
