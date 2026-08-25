@@ -2,7 +2,8 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// บน Vercel (serverless) เขียนไฟล์ได้เฉพาะ /tmp — โหมดเดโม่: ข้อมูล reset เมื่อ instance รีไซเคิล
+const DATA_DIR = process.env.VERCEL ? '/tmp/peak-pos-data' : path.join(process.cwd(), 'data');
 
 let db;
 
