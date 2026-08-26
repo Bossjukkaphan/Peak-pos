@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDb, getSetting, todayStr } from '../../../src/lib/db';
-import { addMeasurement } from '../../../src/lib/actions';
-import GrowthChart from '../../../src/components/GrowthChart';
+import { getDb, getSetting, todayStr } from '@/lib/db';
+import { addMeasurement } from '@/lib/actions';
+import GrowthChart from '@/components/GrowthChart';
 
 export const dynamic = 'force-dynamic';
 

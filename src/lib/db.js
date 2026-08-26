@@ -121,7 +121,8 @@ function migrate(db) {
     lead_id INTEGER,
     coach_id INTEGER REFERENCES coaches(id),
     date TEXT NOT NULL,                       -- YYYY-MM-DD
-    time TEXT NOT NULL,                       -- HH:MM (slot 30 นาที)
+    time TEXT NOT NULL,                       -- HH:MM เวลาเริ่ม (slot 30 นาที)
+    end_time TEXT,                            -- HH:MM เวลาจบ
     type TEXT NOT NULL DEFAULT 'train',       -- train | trial | consult | measure
     status TEXT NOT NULL DEFAULT 'booked',    -- booked | attended | no_show | cancelled
     note TEXT,
@@ -166,6 +167,12 @@ function migrate(db) {
     value TEXT NOT NULL
   );
   `);
+
+  // ฐานข้อมูลเก่าที่สร้างก่อนมี end_time
+  const bookingCols = db.prepare('PRAGMA table_info(bookings)').all();
+  if (!bookingCols.some((c) => c.name === 'end_time')) {
+    db.exec('ALTER TABLE bookings ADD COLUMN end_time TEXT');
+  }
 }
 
 function seedIfEmpty(db) {
@@ -227,6 +234,12 @@ function seedIfEmpty(db) {
     seedEnroll('PL002', co1, cTai, 8, 8000, 0, 'Cash');
     seedEnroll('PL003', co3, cAun, 24, 24000, 0, 'QR');
 
+    // ตัวอย่าง booking วันนี้ ให้ตาราง/ปฏิทินมีข้อมูลตั้งต้น
+    const bk = db.prepare('INSERT INTO bookings (member_id, coach_id, date, time, end_time, type) VALUES (?,?,?,?,?,?)');
+    bk.run('PL001', cOam, today, '17:00', '18:00', 'train');
+    bk.run('PL002', cTai, today, '10:00', '11:00', 'train');
+    bk.run('PL003', cAun, addDays(today, 1), '16:00', '17:00', 'train');
+
     // ตัวอย่าง lead จากตาราง Consult ของชีท
     const lead = db.prepare('INSERT INTO leads (contact_name, child_name, child_age, child_gender, phone, channel, status, reason) VALUES (?,?,?,?,?,?,?,?)');
     const l1 = lead.run('คุณน้าจี', 'น้องเอช', 16, 'ชาย', '0982233345', 'Facebook', 'not_purchased', 'ขอคิดดูก่อน ติดเรื่องเงิน').lastInsertRowid;
@@ -261,6 +274,13 @@ export function addDays(dateStr, days) {
   d.setDate(d.getDate() + days);
   const p = (x) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+export function addMinutes(hhmm, minutes) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const t = h * 60 + m + minutes;
+  const p = (x) => String(x).padStart(2, '0');
+  return `${p(Math.floor(t / 60))}:${p(t % 60)}`;
 }
 
 export function nextMemberId(db) {

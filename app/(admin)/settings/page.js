@@ -1,5 +1,5 @@
-import { getDb, getSetting } from '../../src/lib/db';
-import { updateSettings } from '../../src/lib/actions';
+import { getDb, getSetting } from '@/lib/db';
+import { updateSettings } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 

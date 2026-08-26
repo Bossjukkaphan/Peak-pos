@@ -1,5 +1,5 @@
-import { getDb, todayStr } from '../../src/lib/db';
-import { addCoach, updateCoachRate } from '../../src/lib/actions';
+import { getDb, todayStr } from '@/lib/db';
+import { addCoach, updateCoachRate } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 

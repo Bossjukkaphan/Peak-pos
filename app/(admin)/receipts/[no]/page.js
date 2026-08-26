@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDb } from '../../../src/lib/db';
-import PrintButton from '../../../src/components/PrintButton';
+import { getDb } from '@/lib/db';
+import PrintButton from '@/components/PrintButton';
 
 export const dynamic = 'force-dynamic';
 

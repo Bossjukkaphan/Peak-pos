@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getDb, getSetting } from '../../src/lib/db';
+import { getDb, getSetting } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 

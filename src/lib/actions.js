@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { getDb, nextReceiptNo, nextMemberId, addDays, todayStr, remainingOf, getSetting } from './db';
+import { cookies } from 'next/headers';
+import { getDb, nextReceiptNo, nextMemberId, addDays, addMinutes, todayStr, remainingOf, getSetting } from './db';
+import { ADMIN_PIN, ADMIN_COOKIE } from './auth';
 
 const s = (fd, k) => {
   const v = fd.get(k);
@@ -77,10 +79,15 @@ export async function sellCourse(formData) {
 
 export async function createBooking(formData) {
   const db = getDb();
-  db.prepare('INSERT INTO bookings (member_id, lead_id, coach_id, date, time, type, note) VALUES (?,?,?,?,?,?,?)')
+  const start = s(formData,'time');
+  let end = s(formData,'end_time');
+  if (!start) return;
+  if (!end || end <= start) end = addMinutes(start, 60);
+  db.prepare('INSERT INTO bookings (member_id, lead_id, coach_id, date, time, end_time, type, note) VALUES (?,?,?,?,?,?,?,?)')
     .run(s(formData,'member_id'), num(formData,'lead_id'), num(formData,'coach_id'),
-      s(formData,'date'), s(formData,'time'), s(formData,'type') ?? 'train', s(formData,'note'));
+      s(formData,'date'), start, end, s(formData,'type') ?? 'train', s(formData,'note'));
   revalidatePath('/schedule');
+  revalidatePath('/board');
 }
 
 // เช็คอิน: ตัด 1 ครั้งจากคอร์ส active ที่เริ่มก่อน (FIFO) และยังไม่หมดอายุ
@@ -211,6 +218,17 @@ export async function updateCoachRate(formData) {
   }
   revalidatePath('/coaches');
   revalidatePath('/');
+}
+
+export async function loginAdmin(formData) {
+  const pin = s(formData, 'pin');
+  const next = s(formData, 'next') ?? '/';
+  if (pin !== ADMIN_PIN) {
+    redirect(`/login?error=1&next=${encodeURIComponent(next)}`);
+  }
+  const jar = await cookies();
+  jar.set(ADMIN_COOKIE, pin, { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30 });
+  redirect(next.startsWith('/') ? next : '/');
 }
 
 export async function addCoach(formData) {

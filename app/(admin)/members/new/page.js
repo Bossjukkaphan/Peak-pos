@@ -1,4 +1,4 @@
-import { createMember } from '../../../src/lib/actions';
+import { createMember } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
