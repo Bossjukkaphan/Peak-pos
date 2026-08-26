@@ -1,5 +1,5 @@
 import { getDb, todayStr } from '../../src/lib/db';
-import { addCoach } from '../../src/lib/actions';
+import { addCoach, updateCoachRate } from '../../src/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +43,14 @@ export default function Coaches() {
               <tr key={c.id}>
                 <td>{c.name}</td>
                 <td>{c.nickname}</td>
-                <td className="num">{c.rate.toLocaleString()}฿</td>
+                <td className="num">
+                  <form action={updateCoachRate} className="inline-form" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                    <input type="hidden" name="coach_id" value={c.id} />
+                    <input type="number" name="rate" defaultValue={c.rate} min="0" style={{ width: 70, textAlign: 'right' }} aria-label={`เรทของโค้ช${c.nickname}`} />
+                    <span>฿</span>
+                    <button className="btn small ghost">บันทึก</button>
+                  </form>
+                </td>
                 <td className="num">{c.active_students}</td>
                 <td className="num">{c.month_sessions}</td>
                 <td className="num"><b>{(c.month_sessions * c.rate).toLocaleString()}฿</b></td>

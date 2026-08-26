@@ -202,6 +202,17 @@ export async function updateSettings(formData) {
   revalidatePath('/settings');
 }
 
+export async function updateCoachRate(formData) {
+  const db = getDb();
+  const id = num(formData, 'coach_id');
+  const rate = num(formData, 'rate');
+  if (id !== null && rate !== null && rate >= 0) {
+    db.prepare('UPDATE coaches SET rate=? WHERE id=?').run(rate, id);
+  }
+  revalidatePath('/coaches');
+  revalidatePath('/');
+}
+
 export async function addCoach(formData) {
   const db = getDb();
   db.prepare('INSERT INTO coaches (name, nickname, rate) VALUES (?,?,?)')

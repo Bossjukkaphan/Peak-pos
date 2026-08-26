@@ -178,10 +178,11 @@ function seedIfEmpty(db) {
     db.prepare("INSERT INTO settings(key,value) VALUES ('low_credit_threshold','6')").run();
     db.prepare("INSERT INTO settings(key,value) VALUES ('no_show_deducts','0')").run();
 
+    // เรทค่าเทรนตาม protocol ทีม: 30 บาท/หัว/ครั้ง (แก้ได้ที่หน้าโค้ช)
     const coach = db.prepare('INSERT INTO coaches (name, nickname, rate) VALUES (?,?,?)');
-    const cOam = coach.run('โค้ชออม', 'ออม', 150).lastInsertRowid;
-    const cTai = coach.run('โค้ชต่าย', 'ต่าย', 240).lastInsertRowid;
-    const cAun = coach.run('โค้ชอั๋น', 'อั๋น', 240).lastInsertRowid;
+    const cOam = coach.run('โค้ชออม', 'ออม', 30).lastInsertRowid;
+    const cTai = coach.run('โค้ชต่าย', 'ต่าย', 30).lastInsertRowid;
+    const cAun = coach.run('โค้ชอั๋น', 'อั๋น', 30).lastInsertRowid;
 
     const course = db.prepare('INSERT INTO courses (name, sessions, price, validity_days) VALUES (?,?,?,?)');
     const co1 = course.run('คอร์ส 1 เดือน (8 ครั้ง)', 8, 8000, 60).lastInsertRowid;
