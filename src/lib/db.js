@@ -2,8 +2,9 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-// บน Vercel (serverless) เขียนไฟล์ได้เฉพาะ /tmp — โหมดเดโม่: ข้อมูล reset เมื่อ instance รีไซเคิล
-const DATA_DIR = process.env.VERCEL ? '/tmp/peak-pos-data' : path.join(process.cwd(), 'data');
+// บน serverless (Vercel/Netlify) เขียนไฟล์ได้เฉพาะ /tmp — โหมดเดโม่: ข้อมูล reset เมื่อ instance รีไซเคิล
+const ON_SERVERLESS = process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME;
+const DATA_DIR = ON_SERVERLESS ? '/tmp/peak-pos-data' : path.join(process.cwd(), 'data');
 
 let db;
 
