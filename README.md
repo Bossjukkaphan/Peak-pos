@@ -30,7 +30,12 @@ npm run dev        # เปิด http://localhost:3000
 
 Next.js (App Router, Server Actions) + better-sqlite3 — เตรียมย้ายขึ้น Supabase/PostgreSQL ในเฟสถัดไปตาม blueprint
 
-## การเข้าถึง (เพิ่มในรอบอัปเดต)
+## ลิงก์ใช้งานจริง
+
+- ระบบหลัก: https://peak-pos-main.vercel.app (deploy อัตโนมัติทุกครั้งที่ push ขึ้น branch นี้)
+- บอร์ดโค้ช: https://peak-pos-main.vercel.app/board
+
+## การเข้าถึง
 
 - **หน้าแอดมิน** (Dashboard, สมาชิก, ขายคอร์ส ฯลฯ) ต้องใส่ PIN ก่อนเข้า — ค่าเริ่มต้น `1234` เปลี่ยนได้ด้วย env `ADMIN_PIN`
 - **บอร์ดโค้ช** `/board` เปิดดูได้โดยไม่ต้องใส่ PIN — เห็นเฉพาะตารางสอน (ชื่อ เวลาเริ่ม–จบ ประเภท สถานะ) ไม่มีข้อมูลคอร์ส/รายได้
