@@ -1,17 +1,23 @@
+/* PEAK CI — Soft Tech White / Deep Slate Navy / Electric Royal Blue / Kinetic Lime / Electric Solar Orange */
 :root {
-  --bg: #F4F8F5;
+  --bg: #F3F6F6;
   --surface: #FFFFFF;
-  --surface-2: #EAF1EC;
-  --ink: #17251F;
-  --ink-2: #5A6D62;
-  --line: #D8E3DC;
-  --green: #147A5C;
-  --green-dark: #0E5B45;
-  --green-soft: #E1EFE8;
-  --red: #C2452A;
-  --red-soft: #FBE8E2;
-  --amber: #9A6708;
-  --amber-soft: #F7EDD6;
+  --surface-2: #EAF0F6;
+  --ink: #16243A;
+  --ink-2: #5C6B80;
+  --line: #D9E1EA;
+  --navy: #16243A;
+  --blue: #1A92FF;
+  --lime: #ACD84C;
+  --orange: #FF5A36;
+  /* ชื่อ token เดิมคงไว้ทั้งระบบ — map เข้าสี CI ใหม่ */
+  --green: #1A92FF;        /* สีหลัก: ปุ่ม ลิงก์ กราฟ */
+  --green-dark: #16243A;   /* topbar / hover */
+  --green-soft: #E3F1FF;
+  --red: #E04A26;          /* solar orange เข้มขึ้นเพื่อ contrast ตัวอักษร */
+  --red-soft: #FFE9E2;
+  --amber: #5F7D14;        /* โทน lime สำหรับ pill เตือน/ของแถม */
+  --amber-soft: #EFF7D8;
 }
 
 * { box-sizing: border-box; }
@@ -20,12 +26,12 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: "Anuphan", "Noto Sans Thai", sans-serif;
+  font-family: "Prompt", "Noto Sans Thai", sans-serif;
   font-size: 15px;
   line-height: 1.6;
 }
 
-h1, h2, h3 { font-family: "Mitr", "Anuphan", sans-serif; font-weight: 600; line-height: 1.3; }
+h1, h2, h3 { font-family: "Prompt", sans-serif; font-weight: 600; line-height: 1.3; }
 h1 { font-size: 1.5rem; margin: 0 0 4px; }
 h2 { font-size: 1.15rem; margin: 0 0 10px; }
 h3 { font-size: 1rem; margin: 0 0 8px; }
@@ -37,8 +43,19 @@ a { color: var(--green); }
   max-width: 1200px; margin: 0 auto; padding: 0 20px;
   display: flex; align-items: center; gap: 28px; height: 54px;
 }
-.brand { font-family: "Mitr", sans-serif; font-size: 1.15rem; font-weight: 600; color: #fff; text-decoration: none; }
-.brand span { color: #8FD9BC; }
+.brand { font-size: 1.2rem; color: #fff; text-decoration: none; }
+
+/* โลโก้ PEAK — ตัว E เป็นแท่งกราฟ 3 สีตาม CI (ส้ม/เขียวมะนาว/ฟ้า จากสั้นไปยาว) */
+.logo {
+  font-family: "Rammetto One", "Prompt", sans-serif; font-weight: 400;
+  display: inline-flex; align-items: center; gap: 3px; letter-spacing: .04em; line-height: 1;
+}
+.logo .bars { display: inline-flex; flex-direction: column; gap: .1em; width: .68em; }
+.logo .bars i { display: block; height: .17em; border-radius: .05em; }
+.logo .bars i:nth-child(1) { width: 52%; background: var(--orange); }
+.logo .bars i:nth-child(2) { width: 76%; background: var(--lime); }
+.logo .bars i:nth-child(3) { width: 100%; background: var(--blue); }
+.logo-tag { font-family: "Prompt", sans-serif; font-weight: 600; font-size: .68em; color: var(--lime); margin-left: .6em; letter-spacing: .02em; }
 .topbar nav { display: flex; gap: 4px; flex-wrap: wrap; }
 .topbar nav a {
   color: #D3E8DD; text-decoration: none; font-weight: 500;
@@ -49,9 +66,12 @@ a { color: var(--green); }
 .main { max-width: 1200px; margin: 0 auto; padding: 26px 20px 80px; }
 
 .page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.page-head > div { flex-wrap: wrap; }
 .page-head .sub { color: var(--ink-2); }
 
 .grid { display: grid; gap: 14px; }
+/* ให้การ์ดในกริดหดตามจอได้ ตาราง/กราฟข้างในจะเลื่อนใน .tbl ของตัวเองแทนการดันทั้งหน้า */
+.grid > *, .with-cal > * { min-width: 0; }
 .stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 .cols-2 { grid-template-columns: 1fr 1fr; }
 @media (max-width: 860px) { .cols-2 { grid-template-columns: 1fr; } }
@@ -60,12 +80,13 @@ a { color: var(--green); }
 .card.alert { border-color: var(--red); }
 
 .stat .label { font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
-.stat .value { font-family: "Mitr", sans-serif; font-size: 1.7rem; font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
+.stat .value { font-family: "Prompt", sans-serif; font-size: 1.7rem; font-weight: 600; color: var(--green); font-variant-numeric: tabular-nums; }
 .stat .value.warn { color: var(--red); }
 .stat .hint { font-size: .82rem; color: var(--ink-2); }
 
 table { border-collapse: collapse; width: 100%; font-size: .92rem; font-variant-numeric: tabular-nums; }
-.tbl { overflow-x: auto; }
+.tbl { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tbl svg { max-width: 100%; height: auto; }
 th, td { text-align: left; padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: top; }
 thead th { border-top: none; font-size: .76rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); background: var(--surface-2); }
 tbody tr:hover { background: var(--surface-2); }
@@ -100,6 +121,9 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible {
   outline: 2px solid var(--green); outline-offset: 1px;
 }
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.form-row > * { min-width: 0; }
+.field input, .field select, .field textarea { width: 100%; min-width: 0; }
+select { max-width: 100%; }
 
 .inline-form { display: inline; }
 
@@ -131,7 +155,7 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible {
 
 .cal { padding: 12px 14px; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.cal-head b { font-family: "Mitr", sans-serif; }
+.cal-head b { font-family: "Prompt", sans-serif; }
 .cal-head a { text-decoration: none; font-size: 1.2rem; font-weight: 700; padding: 0 10px; border-radius: 8px; }
 .cal-head a:hover { background: var(--green-soft); }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
@@ -146,7 +170,40 @@ input:focus, select:focus, textarea:focus, .btn:focus-visible {
 .cal-day.sel { background: var(--green); color: #fff; }
 .cal-num { font-size: .88rem; font-weight: 600; }
 .cal-n { font-size: .68rem; color: var(--green-dark); font-weight: 700; min-height: 14px; }
-.cal-day.sel .cal-n { color: #CFEFDF; }
+.cal-day.sel .cal-n { color: #D6EBFF; }
+
+/* มือถือ */
+@media (max-width: 700px) {
+  .topbar-inner {
+    height: auto; flex-direction: column; align-items: stretch;
+    gap: 0; padding: 8px 12px 0;
+  }
+  .brand { padding: 2px 0 6px; }
+  .topbar nav {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px; margin: 0 -12px; padding-left: 12px; padding-right: 12px;
+    scrollbar-width: none;
+  }
+  .topbar nav::-webkit-scrollbar { display: none; }
+  .topbar nav a { white-space: nowrap; padding: 6px 10px; font-size: .9rem; }
+
+  .main { padding: 16px 12px 60px; }
+  .card { padding: 12px; border-radius: 10px; }
+  .page-head { margin-bottom: 14px; row-gap: 10px; }
+  h1 { font-size: 1.3rem; }
+
+  /* iOS ซูมหน้าจอเองถ้า input เล็กกว่า 16px */
+  input, select, textarea { font-size: 16px; }
+  .btn { padding: 9px 16px; }
+  .btn.small { padding: 5px 12px; }
+  .chip-actions button { padding: 3px 10px; font-size: .78rem; }
+
+  th, td { padding: 7px 8px; }
+  .grid { gap: 10px; }
+  .section { margin-top: 18px; }
+  .stat .value { font-size: 1.45rem; }
+  .slot-time { padding: 8px 6px; font-size: .85rem; }
+}
 
 @media print {
   .topbar, .no-print { display: none !important; }

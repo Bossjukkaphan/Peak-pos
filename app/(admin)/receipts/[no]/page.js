@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDb } from '@/lib/db';
 import PrintButton from '@/components/PrintButton';
+import Logo from '@/components/Logo';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export default async function Receipt({ params }) {
 
       <div className="card" id="receipt">
         <div style={{ textAlign: 'center', borderBottom: '1px solid var(--line)', paddingBottom: 12, marginBottom: 12 }}>
-          <h1 style={{ marginBottom: 0 }}>Peak Gym</h1>
+          <h1 style={{ marginBottom: 0 }}><Logo /></h1>
           <div className="muted">ใบเสร็จรับเงิน / Receipt</div>
         </div>
         <div className="tbl"><table><tbody>
@@ -43,7 +44,7 @@ export default async function Receipt({ params }) {
         </tbody></table></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '2px solid var(--ink)', marginTop: 12, paddingTop: 10 }}>
           <b>ยอดชำระรวม</b>
-          <span style={{ fontFamily: 'Mitr, Anuphan, sans-serif', fontSize: '1.5rem', fontWeight: 600 }}>
+          <span style={{ fontFamily: 'Prompt, sans-serif', fontSize: '1.5rem', fontWeight: 600 }}>
             {p.amount.toLocaleString()} บาท
           </span>
         </div>

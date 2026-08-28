@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 
 const NAV = [
   ['/', 'Dashboard'],
@@ -18,7 +19,7 @@ export default function AdminLayout({ children }) {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link href="/" className="brand">Peak <span>POS</span></Link>
+          <Link href="/" className="brand"><Logo tag="POS" /></Link>
           <nav>
             {NAV.map(([href, label]) => (
               <Link key={href} href={href}>{label}</Link>
