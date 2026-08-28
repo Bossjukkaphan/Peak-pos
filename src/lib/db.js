@@ -167,6 +167,16 @@ function migrate(db) {
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+
+  -- บันทึกการติดต่อลูกค้า (CRM): โทร/LINE/หน้าร้าน คุยอะไร ตกลงอะไร
+  CREATE TABLE IF NOT EXISTS contact_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id TEXT REFERENCES members(id),
+    lead_id INTEGER REFERENCES leads(id),
+    channel TEXT NOT NULL DEFAULT 'โทร',      -- โทร | LINE | หน้าร้าน | อื่นๆ
+    note TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
   `);
 
   // ฐานข้อมูลเก่าที่สร้างก่อนมี end_time

@@ -220,6 +220,103 @@ export async function updateCoachRate(formData) {
   revalidatePath('/');
 }
 
+export async function updateMember(formData) {
+  const db = getDb();
+  const id = s(formData, 'id');
+  if (!id || !db.prepare('SELECT id FROM members WHERE id=?').get(id)) return;
+  db.transaction(() => {
+    db.prepare(`UPDATE members SET
+      full_name=?, nickname=?, gender=?, birthdate=?, school=?, grade=?, goal=?, medical=?, caution=?,
+      segment=?, channel=?, note=?, status=? WHERE id=?`)
+      .run(s(formData,'full_name'), s(formData,'nickname') ?? '-', s(formData,'gender'), s(formData,'birthdate'),
+        s(formData,'school'), s(formData,'grade'), s(formData,'goal'), s(formData,'medical'), s(formData,'caution'),
+        s(formData,'segment') ?? 'Teen', s(formData,'channel'), s(formData,'note'),
+        s(formData,'status') === 'Inactive' ? 'Inactive' : 'Active', id);
+    const gname = s(formData,'guardian_name');
+    if (gname) {
+      const existing = db.prepare('SELECT g.id FROM guardians g JOIN member_guardians mg ON mg.guardian_id=g.id WHERE mg.member_id=? LIMIT 1').get(id);
+      if (existing) {
+        db.prepare('UPDATE guardians SET name=?, relationship=?, phone=?, line_id=?, email=?, address=?, province=? WHERE id=?')
+          .run(gname, s(formData,'guardian_relationship'), s(formData,'guardian_phone'), s(formData,'guardian_line'),
+            s(formData,'guardian_email'), s(formData,'guardian_address'), s(formData,'guardian_province'), existing.id);
+      } else {
+        const gid = db.prepare('INSERT INTO guardians (name, relationship, phone, line_id, email, address, province) VALUES (?,?,?,?,?,?,?)')
+          .run(gname, s(formData,'guardian_relationship'), s(formData,'guardian_phone'), s(formData,'guardian_line'),
+            s(formData,'guardian_email'), s(formData,'guardian_address'), s(formData,'guardian_province')).lastInsertRowid;
+        db.prepare('INSERT INTO member_guardians (member_id, guardian_id) VALUES (?,?)').run(id, gid);
+      }
+    }
+  })();
+  revalidatePath(`/members/${id}`);
+  redirect(`/members/${id}`);
+}
+
+// พักคอร์ส: เลื่อนวันหมดอายุออกไปตามจำนวนวัน พร้อมบันทึกเหตุผลลง ledger (delta 0 = ไม่กระทบครั้ง)
+export async function freezeEnrollment(formData) {
+  const db = getDb();
+  const eid = num(formData, 'enrollment_id');
+  const days = num(formData, 'days');
+  const note = s(formData, 'note');
+  const e = db.prepare("SELECT * FROM enrollments WHERE id=? AND status='active'").get(eid);
+  if (!e || !days || days < 1 || days > 365) return;
+  db.transaction(() => {
+    db.prepare('UPDATE enrollments SET expiry_date=? WHERE id=?').run(addDays(e.expiry_date, days), eid);
+    db.prepare('INSERT INTO credit_ledger (enrollment_id, delta, kind, note) VALUES (?,0,?,?)')
+      .run(eid, 'freeze', `พักคอร์ส ${days} วัน${note ? ` — ${note}` : ''} (หมดอายุใหม่ ${addDays(e.expiry_date, days)})`);
+  })();
+  revalidatePath(`/members/${e.member_id}`);
+}
+
+// คืนครั้ง/ปรับปรุงครั้ง ผ่าน ledger เท่านั้น — กันครั้งคงเหลือติดลบ
+export async function adjustCredits(formData) {
+  const db = getDb();
+  const eid = num(formData, 'enrollment_id');
+  const delta = num(formData, 'delta');
+  const note = s(formData, 'note');
+  const e = db.prepare('SELECT * FROM enrollments WHERE id=?').get(eid);
+  if (!e || !delta || !Number.isInteger(delta) || Math.abs(delta) > 100 || !note) return;
+  if (remainingOf(db, eid) + delta < 0) return;
+  db.transaction(() => {
+    db.prepare('INSERT INTO credit_ledger (enrollment_id, delta, kind, note) VALUES (?,?,?,?)')
+      .run(eid, delta, delta > 0 ? 'refund' : 'adjust', note);
+    const rem = remainingOf(db, eid);
+    if (rem > 0 && e.status === 'finished') db.prepare("UPDATE enrollments SET status='active' WHERE id=?").run(eid);
+    if (rem === 0 && e.status === 'active') db.prepare("UPDATE enrollments SET status='finished' WHERE id=?").run(eid);
+  })();
+  revalidatePath(`/members/${e.member_id}`);
+}
+
+export async function addDayOff(formData) {
+  const db = getDb();
+  const coachId = num(formData, 'coach_id');
+  const date = s(formData, 'date');
+  if (!coachId || !date) return;
+  db.prepare('INSERT OR IGNORE INTO coach_days_off (coach_id, date) VALUES (?,?)').run(coachId, date);
+  revalidatePath('/coaches');
+  revalidatePath('/schedule');
+  revalidatePath('/board');
+}
+
+export async function removeDayOff(formData) {
+  const db = getDb();
+  db.prepare('DELETE FROM coach_days_off WHERE id=?').run(Number(formData.get('dayoff_id')));
+  revalidatePath('/coaches');
+  revalidatePath('/schedule');
+  revalidatePath('/board');
+}
+
+export async function addContactLog(formData) {
+  const db = getDb();
+  const note = s(formData, 'note');
+  const memberId = s(formData, 'member_id');
+  const leadId = num(formData, 'lead_id');
+  if (!note || (!memberId && !leadId)) return;
+  db.prepare('INSERT INTO contact_logs (member_id, lead_id, channel, note) VALUES (?,?,?,?)')
+    .run(memberId, leadId, s(formData,'channel') ?? 'โทร', note);
+  revalidatePath('/crm');
+  if (memberId) revalidatePath(`/members/${memberId}`);
+}
+
 export async function loginAdmin(formData) {
   const pin = s(formData, 'pin');
   const next = s(formData, 'next') ?? '/';

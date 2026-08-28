@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getDb, getSetting, todayStr } from '@/lib/db';
-import { addMeasurement } from '@/lib/actions';
+import { addMeasurement, freezeEnrollment, adjustCredits, addContactLog } from '@/lib/actions';
 import GrowthChart from '@/components/GrowthChart';
 
 export const dynamic = 'force-dynamic';
 
-const KIND_LABEL = { purchase: 'ซื้อคอร์ส', bonus: 'ของแถม', checkin: 'เข้าเทรน', refund: 'คืนครั้ง', adjust: 'ปรับปรุง' };
+const KIND_LABEL = { purchase: 'ซื้อคอร์ส', bonus: 'ของแถม', checkin: 'เข้าเทรน', refund: 'คืนครั้ง', adjust: 'ปรับปรุง', freeze: 'พักคอร์ส' };
 
 export default async function MemberDetail({ params, searchParams }) {
   const { id } = await params;
@@ -33,6 +33,8 @@ export default async function MemberDetail({ params, searchParams }) {
     JOIN enrollments e ON e.id=cl.enrollment_id JOIN courses c ON c.id=e.course_id
     WHERE e.member_id=? ORDER BY cl.created_at DESC, cl.id DESC LIMIT 30`).all(id);
   const measurements = db.prepare('SELECT * FROM measurements WHERE member_id=? ORDER BY date DESC, id DESC').all(id);
+  const contactLogs = db.prepare('SELECT * FROM contact_logs WHERE member_id=? ORDER BY created_at DESC, id DESC LIMIT 20').all(id);
+  const activeEnrollments = enrollments.filter((e) => e.status === 'active');
 
   const activeRemaining = enrollments.filter((e) => e.status === 'active').reduce((sum, e) => sum + e.remaining, 0);
 
@@ -47,6 +49,7 @@ export default async function MemberDetail({ params, searchParams }) {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Link className="btn" href={`/pos?member=${m.id}`}>ขาย/ต่อคอร์ส</Link>
+          <Link className="btn ghost" href={`/members/${m.id}/edit`}>แก้ไขข้อมูล</Link>
           <Link className="btn ghost" href="/members">← รายชื่อสมาชิก</Link>
         </div>
       </div>
@@ -105,6 +108,39 @@ export default async function MemberDetail({ params, searchParams }) {
         </table></div>
       </div>
 
+      {activeEnrollments.length > 0 && (
+        <div className="card section">
+          <h2>จัดการคอร์ส — พักคอร์ส / คืน-ปรับครั้ง</h2>
+          <div className="tbl"><table>
+            <thead><tr><th>คอร์ส</th><th>พักคอร์ส (เลื่อนวันหมดอายุ)</th><th>คืน/ปรับครั้ง (+เพิ่ม / −หัก)</th></tr></thead>
+            <tbody>
+              {activeEnrollments.map((e) => (
+                <tr key={e.id}>
+                  <td>{e.course_name}<br /><span className="muted">เหลือ {e.remaining} ครั้ง · หมดอายุ {e.expiry_date}</span></td>
+                  <td>
+                    <form action={freezeEnrollment} className="inline-form" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <input type="hidden" name="enrollment_id" value={e.id} />
+                      <input type="number" name="days" min="1" max="365" placeholder="กี่วัน" required style={{ width: 70 }} aria-label="จำนวนวันพักคอร์ส" />
+                      <input name="note" placeholder="เหตุผล เช่น ป่วย / สอบ" style={{ width: 150 }} />
+                      <button className="btn small ghost">พักคอร์ส</button>
+                    </form>
+                  </td>
+                  <td>
+                    <form action={adjustCredits} className="inline-form" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <input type="hidden" name="enrollment_id" value={e.id} />
+                      <input type="number" name="delta" min="-100" max="100" placeholder="+1 / -1" required style={{ width: 70 }} aria-label="จำนวนครั้งที่ปรับ" />
+                      <input name="note" placeholder="เหตุผล (จำเป็น)" required style={{ width: 150 }} />
+                      <button className="btn small ghost">บันทึก</button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table></div>
+          <p className="muted" style={{ fontSize: '.82rem', marginTop: 8 }}>ทุกการปรับถูกบันทึกลงประวัติครั้ง (ledger) ตรวจสอบย้อนหลังได้เสมอ — ระบบกันครั้งคงเหลือติดลบให้อัตโนมัติ</p>
+        </div>
+      )}
+
       <div className="card section">
         <h2>กราฟการเติบโต (Growth Report)</h2>
         <GrowthChart measurements={measurements} />
@@ -160,6 +196,28 @@ export default async function MemberDetail({ params, searchParams }) {
             </tbody>
           </table></div>
         </div>
+      </div>
+
+      <div className="card section">
+        <h2>บันทึกการติดต่อ (CRM)</h2>
+        <form action={addContactLog} className="inline-form" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          <input type="hidden" name="member_id" value={m.id} />
+          <select name="channel" aria-label="ช่องทางติดต่อ">
+            <option>โทร</option><option>LINE</option><option>หน้าร้าน</option><option>อื่นๆ</option>
+          </select>
+          <input name="note" placeholder="คุยอะไร / ผู้ปกครองขออะไร / นัดอะไรไว้" required style={{ flex: 1, minWidth: 220 }} />
+          <button className="btn small">บันทึก</button>
+        </form>
+        {contactLogs.length === 0 ? <p className="muted">ยังไม่มีบันทึกการติดต่อ</p> : (
+          <div className="tbl"><table>
+            <thead><tr><th>เวลา</th><th>ช่องทาง</th><th>บันทึก</th></tr></thead>
+            <tbody>
+              {contactLogs.map((c) => (
+                <tr key={c.id}><td>{c.created_at}</td><td><span className="pill grey">{c.channel}</span></td><td>{c.note}</td></tr>
+              ))}
+            </tbody>
+          </table></div>
+        )}
       </div>
 
       <div className="card section">

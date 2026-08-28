@@ -6,6 +6,8 @@ const NAV = [
   ['/members', 'สมาชิก'],
   ['/pos', 'ขายคอร์ส'],
   ['/trials', 'Trial / ตามต่อ'],
+  ['/crm', 'CRM'],
+  ['/reports', 'รายงาน'],
   ['/coaches', 'โค้ช'],
   ['/settings', 'ตั้งค่า'],
   ['/board', 'บอร์ดโค้ช ↗'],

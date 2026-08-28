@@ -36,6 +36,7 @@ export default function ScheduleGrid({ date, admin = false }) {
     cell.get(key).push(b);
   }
 
+  const offIds = new Set(db.prepare('SELECT coach_id FROM coach_days_off WHERE date=?').all(date).map((r) => r.coach_id));
   const cols = `90px repeat(${coaches.length || 1}, minmax(170px, 1fr))`;
 
   return (
@@ -43,7 +44,11 @@ export default function ScheduleGrid({ date, admin = false }) {
       <div className="schedule" style={{ minWidth: 120 + coaches.length * 180 }}>
         <div className="schedule-row head" style={{ gridTemplateColumns: cols }}>
           <div className="slot-time">เวลา</div>
-          {coaches.map((c) => <div key={c.id} className="slot-cell" style={{ justifyContent: 'center' }}>โค้ช{c.nickname}</div>)}
+          {coaches.map((c) => (
+            <div key={c.id} className="slot-cell" style={{ justifyContent: 'center' }}>
+              โค้ช{c.nickname} {offIds.has(c.id) && <span className="pill red">หยุด</span>}
+            </div>
+          ))}
         </div>
         {SLOTS.map((t) => (
           <div key={t} className="schedule-row" style={{ gridTemplateColumns: cols }}>
@@ -51,7 +56,7 @@ export default function ScheduleGrid({ date, admin = false }) {
             {coaches.map((c) => {
               const items = cell.get(`${t}|${c.id}`) ?? [];
               return (
-                <div key={c.id} className="slot-cell">
+                <div key={c.id} className="slot-cell" style={offIds.has(c.id) ? { background: 'var(--surface-2)', opacity: .6 } : undefined}>
                   {items.map((b) => {
                     const low = admin && b.member_id && b.remaining <= threshold;
                     const who = b.member_id

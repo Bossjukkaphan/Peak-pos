@@ -1,5 +1,5 @@
 import { getDb, todayStr } from '@/lib/db';
-import { addCoach, updateCoachRate } from '@/lib/actions';
+import { addCoach, updateCoachRate, addDayOff, removeDayOff } from '@/lib/actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +25,10 @@ export default function Coaches() {
   }
 
   const totalCommission = coaches.reduce((s, c) => s + c.month_sessions * c.rate, 0);
+
+  const daysOff = db.prepare(`
+    SELECT d.*, co.nickname FROM coach_days_off d JOIN coaches co ON co.id=d.coach_id
+    WHERE d.date >= ? ORDER BY d.date, co.id LIMIT 30`).all(todayStr());
 
   return (
     <>
@@ -82,6 +86,39 @@ export default function Coaches() {
           )}
         </div>
 
+        <div className="card">
+          <h2>วันหยุดโค้ช</h2>
+          <form action={addDayOff} className="inline-form" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+            <select name="coach_id" required aria-label="เลือกโค้ช">
+              {coaches.map((c) => <option key={c.id} value={c.id}>โค้ช{c.nickname}</option>)}
+            </select>
+            <input type="date" name="date" required min={todayStr()} aria-label="วันที่หยุด" />
+            <button className="btn small">บันทึกวันหยุด</button>
+          </form>
+          {daysOff.length === 0 ? <p className="muted">ไม่มีวันหยุดที่แจ้งไว้</p> : (
+            <div className="tbl"><table>
+              <thead><tr><th>วันที่</th><th>โค้ช</th><th></th></tr></thead>
+              <tbody>
+                {daysOff.map((d) => (
+                  <tr key={d.id}>
+                    <td>{d.date}</td>
+                    <td>โค้ช{d.nickname}</td>
+                    <td>
+                      <form action={removeDayOff} className="inline-form">
+                        <input type="hidden" name="dayoff_id" value={d.id} />
+                        <button className="btn small danger">ลบ</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table></div>
+          )}
+          <p className="muted" style={{ fontSize: '.82rem', marginTop: 8 }}>วันหยุดจะขึ้นเตือนบนตารางเทรนและบอร์ดโค้ชอัตโนมัติ</p>
+        </div>
+      </div>
+
+      <div className="grid cols-2 section">
         <div className="card">
           <h2>เพิ่มโค้ช</h2>
           <form action={addCoach} className="stack">
