@@ -96,7 +96,10 @@ export default function Dashboard() {
               </tbody>
             </table></div>
           )}
-          <p style={{ marginTop: 10 }}><Link href="/trials">ไปหน้า Trial / ตามต่อ →</Link></p>
+          <p style={{ marginTop: 10 }}>
+            <Link href="/calls">เปิดหน้า "วันนี้ต้องคุยกับใคร" (รวมทุกงานติดตาม) →</Link>
+            {' · '}<Link href="/trials">หน้า Trial / ตามต่อ →</Link>
+          </p>
         </div>
       </div>
 

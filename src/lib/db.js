@@ -179,10 +179,13 @@ function migrate(db) {
   );
   `);
 
-  // ฐานข้อมูลเก่าที่สร้างก่อนมี end_time
+  // ฐานข้อมูลเก่าที่สร้างก่อนมี end_time / recurring_group
   const bookingCols = db.prepare('PRAGMA table_info(bookings)').all();
   if (!bookingCols.some((c) => c.name === 'end_time')) {
     db.exec('ALTER TABLE bookings ADD COLUMN end_time TEXT');
+  }
+  if (!bookingCols.some((c) => c.name === 'recurring_group')) {
+    db.exec('ALTER TABLE bookings ADD COLUMN recurring_group TEXT');
   }
 }
 
@@ -303,4 +306,32 @@ export function nextMemberId(db) {
 // ครั้งคงเหลือของ enrollment
 export function remainingOf(db, enrollmentId) {
   return db.prepare('SELECT COALESCE(SUM(delta),0) AS r FROM credit_ledger WHERE enrollment_id=?').get(enrollmentId).r;
+}
+
+export function nowSlotStr() {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const p = (x) => String(x).padStart(2, '0');
+  return `${p(d.getHours())}:${d.getMinutes() < 30 ? '00' : '30'}`;
+}
+
+// จำนวนนัดที่หนาแน่นที่สุดของโค้ชในช่วง [start, end) — ใช้ตัดสินว่า slot เต็มหรือยัง
+// นับเป็นราย slot 30 นาที เพราะนัดยาวหนึ่งชั่วโมงครองสอง slot ไม่ใช่แค่ช่องเวลาเริ่ม
+export function maxConcurrent(db, { coachId, date, start, end, excludeId = null }) {
+  const rows = db.prepare(`SELECT id, time, end_time FROM bookings
+    WHERE coach_id=? AND date=? AND status IN ('booked','attended')`).all(coachId, date);
+  const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const s0 = toMin(start);
+  const e0 = toMin(end && end > start ? end : addMinutes(start, 60));
+  let peak = 0;
+  for (let t = s0; t < e0; t += 30) {
+    let n = 0;
+    for (const b of rows) {
+      if (b.id === excludeId) continue;
+      const bs = toMin(b.time);
+      const be = toMin(b.end_time && b.end_time > b.time ? b.end_time : addMinutes(b.time, 60));
+      if (bs <= t && be > t) n++;
+    }
+    if (n > peak) peak = n;
+  }
+  return peak;
 }

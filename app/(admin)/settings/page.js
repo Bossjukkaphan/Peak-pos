@@ -7,6 +7,7 @@ export default function Settings() {
   getDb();
   const threshold = getSetting('low_credit_threshold', '6');
   const noShowDeducts = getSetting('no_show_deducts', '0');
+  const slotCapacity = getSetting('slot_capacity', '2');
 
   return (
     <>
@@ -28,6 +29,10 @@ export default function Settings() {
             <option value="0">ไม่หักครั้ง (ค่าเริ่มต้น)</option>
             <option value="1">หัก 1 ครั้ง</option>
           </select>
+        </div>
+        <div className="field">
+          <label htmlFor="st-capacity">ความจุต่อ slot ต่อโค้ช (เต็มแล้วนัดใหม่เข้า waitlist)</label>
+          <input id="st-capacity" type="number" name="slot_capacity" min="1" max="10" defaultValue={slotCapacity} required />
         </div>
         <div><button className="btn">บันทึกการตั้งค่า</button></div>
       </form>

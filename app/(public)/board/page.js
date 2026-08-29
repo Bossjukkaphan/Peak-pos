@@ -13,7 +13,7 @@ export default async function Board({ searchParams }) {
   const db = getDb();
   const date = sp?.date ?? todayStr();
   const month = sp?.cal ?? date.slice(0, 7);
-  const total = db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE date=? AND status!='cancelled'").get(date).n;
+  const total = db.prepare("SELECT COUNT(*) AS n FROM bookings WHERE date=? AND status NOT IN ('cancelled','waitlist')").get(date).n;
 
   return (
     <>

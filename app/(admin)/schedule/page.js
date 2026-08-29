@@ -18,7 +18,7 @@ export default async function Schedule({ searchParams }) {
   const dayStats = db.prepare(`
     SELECT COUNT(*) AS total,
       SUM(CASE WHEN status='attended' THEN 1 ELSE 0 END) AS attended
-    FROM bookings WHERE date=? AND status!='cancelled'`).get(date);
+    FROM bookings WHERE date=? AND status NOT IN ('cancelled','waitlist')`).get(date);
 
   return (
     <>
@@ -33,6 +33,8 @@ export default async function Schedule({ searchParams }) {
           <Link className="btn ghost" href={`/schedule?date=${addDays(date, 1)}`}>ถัดไป →</Link>
         </div>
       </div>
+
+      {sp?.msg && <div className="card notice">{sp.msg}</div>}
 
       <div className="with-cal">
         <MonthCalendar selected={date} month={month} basePath="/schedule" />
@@ -94,6 +96,13 @@ export default async function Schedule({ searchParams }) {
             <div className="field">
               <label htmlFor="bk-note">หมายเหตุ</label>
               <input id="bk-note" name="note" placeholder="เช่น ขอโค้ชผู้หญิง" />
+            </div>
+            <div className="field">
+              <label htmlFor="bk-repeat">จองประจำทุกสัปดาห์</label>
+              <select id="bk-repeat" name="repeat_weeks" defaultValue="1">
+                <option value="1">ครั้งเดียว</option>
+                {[4, 8, 12, 24, 52].map((w) => <option key={w} value={w}>{w} สัปดาห์</option>)}
+              </select>
             </div>
           </div>
           <div><button className="btn">บันทึก Booking</button></div>

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { getDb, nextReceiptNo, nextMemberId, addDays, addMinutes, todayStr, remainingOf, getSetting } from './db';
+import { getDb, nextReceiptNo, nextMemberId, addDays, addMinutes, todayStr, remainingOf, getSetting, maxConcurrent, nowSlotStr } from './db';
 import { ADMIN_PIN, ADMIN_COOKIE } from './auth';
 
 const s = (fd, k) => {
@@ -77,17 +77,134 @@ export async function sellCourse(formData) {
   redirect(`/members/${memberId}?receipt=${receiptNo}`);
 }
 
+// จองนัดเดี่ยวหรือจองประจำรายสัปดาห์ (repeat_weeks > 1) — สัปดาห์ที่ชนวันหยุดโค้ชถูกข้าม
+// และรายงานกลับ ไม่เดาห้อง/เวลาแทนคน · slot เต็ม (ตาม slot_capacity) เข้า waitlist
 export async function createBooking(formData) {
   const db = getDb();
   const start = s(formData,'time');
   let end = s(formData,'end_time');
   if (!start) return;
   if (!end || end <= start) end = addMinutes(start, 60);
-  db.prepare('INSERT INTO bookings (member_id, lead_id, coach_id, date, time, end_time, type, note) VALUES (?,?,?,?,?,?,?,?)')
-    .run(s(formData,'member_id'), num(formData,'lead_id'), num(formData,'coach_id'),
-      s(formData,'date'), start, end, s(formData,'type') ?? 'train', s(formData,'note'));
+  const coachId = num(formData,'coach_id');
+  const firstDate = s(formData,'date');
+  const weeks = Math.min(Math.max(num(formData,'repeat_weeks') ?? 1, 1), 52);
+  const capacity = Number(getSetting('slot_capacity', '2'));
+  const group = weeks > 1 ? `rg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : null;
+
+  let booked = 0, waitlisted = 0;
+  const skipped = [];
+  db.transaction(() => {
+    const ins = db.prepare(`INSERT INTO bookings
+      (member_id, lead_id, coach_id, date, time, end_time, type, status, note, recurring_group)
+      VALUES (?,?,?,?,?,?,?,?,?,?)`);
+    for (let w = 0; w < weeks; w++) {
+      const date = addDays(firstDate, w * 7);
+      const off = db.prepare('SELECT 1 FROM coach_days_off WHERE coach_id=? AND date=?').get(coachId, date);
+      if (off) { skipped.push(date); continue; }
+      const full = maxConcurrent(db, { coachId, date, start, end }) >= capacity;
+      ins.run(s(formData,'member_id'), num(formData,'lead_id'), coachId, date, start, end,
+        s(formData,'type') ?? 'train', full ? 'waitlist' : 'booked', s(formData,'note'), group);
+      if (full) waitlisted++; else booked++;
+    }
+  })();
   revalidatePath('/schedule');
   revalidatePath('/board');
+  const parts = [`จองแล้ว ${booked} นัด`];
+  if (waitlisted) parts.push(`เข้า waitlist ${waitlisted} นัด (slot เต็ม)`);
+  if (skipped.length) parts.push(`ข้าม ${skipped.length} นัดเพราะโค้ชหยุด: ${skipped.join(', ')}`);
+  redirect(`/schedule?date=${firstDate}&msg=${encodeURIComponent(parts.join(' · '))}`);
+}
+
+// เลื่อนนัด: ย้ายแถวเดิมไปช่องใหม่ (id เดิม ประวัติไม่แตก) — ช่องใหม่เต็มให้เข้า waitlist
+export async function rescheduleBooking(formData) {
+  const db = getDb();
+  const id = Number(formData.get('booking_id'));
+  const b = db.prepare("SELECT * FROM bookings WHERE id=? AND status IN ('booked','waitlist')").get(id);
+  if (!b) return;
+  const date = s(formData,'date') ?? b.date;
+  const start = s(formData,'time') ?? b.time;
+  let end = s(formData,'end_time');
+  if (!end || end <= start) {
+    // คงความยาวนัดเดิมไว้ถ้าไม่ได้เลือกเวลาจบใหม่
+    const oldMin = b.end_time && b.end_time > b.time
+      ? (Number(b.end_time.slice(0,2)) * 60 + Number(b.end_time.slice(3,5))) - (Number(b.time.slice(0,2)) * 60 + Number(b.time.slice(3,5)))
+      : 60;
+    end = addMinutes(start, oldMin);
+  }
+  const coachId = num(formData,'coach_id') ?? b.coach_id;
+  const capacity = Number(getSetting('slot_capacity', '2'));
+  const full = maxConcurrent(db, { coachId, date, start, end, excludeId: id }) >= capacity;
+  const movedNote = `เลื่อนจาก ${b.date} ${b.time}`;
+  db.prepare('UPDATE bookings SET date=?, time=?, end_time=?, coach_id=?, status=?, note=? WHERE id=?')
+    .run(date, start, end, coachId, full ? 'waitlist' : 'booked',
+      b.note ? `${b.note} · ${movedNote}` : movedNote, id);
+  revalidatePath('/schedule');
+  revalidatePath('/board');
+  redirect(`/schedule?date=${date}&msg=${encodeURIComponent(full ? 'ย้ายนัดแล้ว — ช่องใหม่เต็ม เข้า waitlist' : 'ย้ายนัดเรียบร้อย')}`);
+}
+
+// รับจาก waitlist เข้า slot — ตรวจความจุซ้ำ ณ วินาทีที่กด (อาจมีคนจองแทรกไปแล้ว)
+export async function promoteWaitlist(formData) {
+  const db = getDb();
+  const id = Number(formData.get('booking_id'));
+  const b = db.prepare("SELECT * FROM bookings WHERE id=? AND status='waitlist'").get(id);
+  if (!b) return;
+  const capacity = Number(getSetting('slot_capacity', '2'));
+  const end = b.end_time && b.end_time > b.time ? b.end_time : addMinutes(b.time, 60);
+  if (maxConcurrent(db, { coachId: b.coach_id, date: b.date, start: b.time, end }) >= capacity) {
+    redirect(`/schedule?date=${b.date}&msg=${encodeURIComponent('slot ยังเต็มอยู่ — รับเข้าไม่ได้')}`);
+  }
+  db.prepare("UPDATE bookings SET status='booked' WHERE id=?").run(id);
+  revalidatePath('/schedule');
+  revalidatePath('/board');
+  redirect(`/schedule?date=${b.date}&msg=${encodeURIComponent('รับเข้า slot แล้ว')}`);
+}
+
+// ยกเลิกนัดประจำที่เหลือทั้งชุด (เฉพาะนัดในอนาคตที่ยังไม่เกิดขึ้น)
+export async function cancelRecurring(formData) {
+  const db = getDb();
+  const id = Number(formData.get('booking_id'));
+  const b = db.prepare('SELECT * FROM bookings WHERE id=?').get(id);
+  if (!b?.recurring_group) return;
+  const n = db.prepare(`UPDATE bookings SET status='cancelled'
+    WHERE recurring_group=? AND status IN ('booked','waitlist') AND date >= ?`)
+    .run(b.recurring_group, todayStr()).changes;
+  revalidatePath('/schedule');
+  revalidatePath('/board');
+  redirect(`/schedule?date=${b.date}&msg=${encodeURIComponent(`ยกเลิกนัดประจำที่เหลือ ${n} นัด`)}`);
+}
+
+// เช็คอิน walk-in จากการ์ดเด็ก: สร้าง booking + ตัดครั้ง จบใน transaction เดียว
+export async function walkInCheckIn(formData) {
+  const db = getDb();
+  const memberId = s(formData,'member_id');
+  const coachId = num(formData,'coach_id');
+  const start = s(formData,'time') ?? nowSlotStr();
+  if (!memberId || !coachId) return;
+  const today = todayStr();
+  let failed = false;
+  try {
+    db.transaction(() => {
+      const bid = db.prepare(`INSERT INTO bookings (member_id, coach_id, date, time, end_time, type, status, note)
+        VALUES (?,?,?,?,?,'train','attended','walk-in')`)
+        .run(memberId, coachId, today, start, addMinutes(start, 60)).lastInsertRowid;
+      const target = db.prepare(`SELECT * FROM enrollments
+        WHERE member_id=? AND status='active' AND expiry_date >= ? ORDER BY start_date, id`)
+        .all(memberId, today).find((e) => remainingOf(db, e.id) > 0);
+      if (!target) throw new Error('no-credit');
+      db.prepare('INSERT INTO credit_ledger (enrollment_id, delta, kind, booking_id, note) VALUES (?,?,?,?,?)')
+        .run(target.id, -1, 'checkin', bid, `เข้าเทรน walk-in ${today} ${start}`);
+      if (remainingOf(db, target.id) === 0) {
+        db.prepare("UPDATE enrollments SET status='finished' WHERE id=?").run(target.id);
+      }
+    })();
+  } catch (e) {
+    if (e.message !== 'no-credit') throw e;
+    failed = true; // transaction ถูก rollback — ไม่มี booking ค้าง
+  }
+  revalidatePath('/schedule');
+  revalidatePath('/');
+  redirect(`/find?q=${encodeURIComponent(memberId)}${failed ? '&err=nocredit' : '&msg=checked'}`);
 }
 
 // เช็คอิน: ตัด 1 ครั้งจากคอร์ส active ที่เริ่มก่อน (FIFO) และยังไม่หมดอายุ
@@ -97,24 +214,30 @@ export async function checkIn(formData) {
   const booking = db.prepare('SELECT * FROM bookings WHERE id=?').get(bookingId);
   if (!booking || booking.status !== 'booked') return;
 
-  db.transaction(() => {
-    if (booking.type === 'train' && booking.member_id) {
-      const enrollments = db.prepare(`SELECT * FROM enrollments
-        WHERE member_id=? AND status='active' AND expiry_date >= ? ORDER BY start_date, id`)
-        .all(booking.member_id, booking.date);
-      const target = enrollments.find((e) => remainingOf(db, e.id) > 0);
-      if (!target) throw new Error('no-credit');
-      db.prepare('INSERT INTO credit_ledger (enrollment_id, delta, kind, booking_id, note) VALUES (?,?,?,?,?)')
-        .run(target.id, -1, 'checkin', bookingId, `เข้าเทรน ${booking.date} ${booking.time}`);
-      if (remainingOf(db, target.id) === 0) {
-        db.prepare("UPDATE enrollments SET status='finished' WHERE id=?").run(target.id);
+  try {
+    db.transaction(() => {
+      if (booking.type === 'train' && booking.member_id) {
+        const enrollments = db.prepare(`SELECT * FROM enrollments
+          WHERE member_id=? AND status='active' AND expiry_date >= ? ORDER BY start_date, id`)
+          .all(booking.member_id, booking.date);
+        const target = enrollments.find((e) => remainingOf(db, e.id) > 0);
+        if (!target) throw new Error('no-credit');
+        db.prepare('INSERT INTO credit_ledger (enrollment_id, delta, kind, booking_id, note) VALUES (?,?,?,?,?)')
+          .run(target.id, -1, 'checkin', bookingId, `เข้าเทรน ${booking.date} ${booking.time}`);
+        if (remainingOf(db, target.id) === 0) {
+          db.prepare("UPDATE enrollments SET status='finished' WHERE id=?").run(target.id);
+        }
       }
-    }
-    db.prepare("UPDATE bookings SET status='attended' WHERE id=?").run(bookingId);
-    if (booking.lead_id) {
-      db.prepare("UPDATE leads SET status='attended' WHERE id=? AND status IN ('new','scheduled')").run(booking.lead_id);
-    }
-  })();
+      db.prepare("UPDATE bookings SET status='attended' WHERE id=?").run(bookingId);
+      if (booking.lead_id) {
+        db.prepare("UPDATE leads SET status='attended' WHERE id=? AND status IN ('new','scheduled')").run(booking.lead_id);
+      }
+    })();
+  } catch (e) {
+    if (e.message !== 'no-credit') throw e;
+    revalidatePath('/schedule');
+    redirect(`/schedule?date=${booking.date}&msg=${encodeURIComponent('เช็คอินไม่สำเร็จ — ครั้งคงเหลือหมด/คอร์สหมดอายุ ต้องต่อคอร์สก่อน')}`);
+  }
   revalidatePath('/schedule');
   revalidatePath('/');
 }
@@ -196,6 +319,7 @@ export async function completeFollowup(formData) {
     }
   })();
   revalidatePath('/trials');
+  revalidatePath('/calls');
 }
 
 export async function updateSettings(formData) {
@@ -205,6 +329,8 @@ export async function updateSettings(formData) {
   if (threshold !== null && threshold >= 1) upsert.run('low_credit_threshold', String(threshold));
   const noShow = s(formData, 'no_show_deducts');
   if (noShow === '0' || noShow === '1') upsert.run('no_show_deducts', noShow);
+  const capacity = num(formData, 'slot_capacity');
+  if (capacity !== null && capacity >= 1 && capacity <= 10) upsert.run('slot_capacity', String(capacity));
   revalidatePath('/');
   revalidatePath('/settings');
 }
@@ -314,6 +440,7 @@ export async function addContactLog(formData) {
   db.prepare('INSERT INTO contact_logs (member_id, lead_id, channel, note) VALUES (?,?,?,?)')
     .run(memberId, leadId, s(formData,'channel') ?? 'โทร', note);
   revalidatePath('/crm');
+  revalidatePath('/calls');
   if (memberId) revalidatePath(`/members/${memberId}`);
 }
 

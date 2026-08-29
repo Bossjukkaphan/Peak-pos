@@ -215,3 +215,53 @@ select { max-width: 100%; }
   background: var(--green-soft); border: 1px solid var(--green); color: var(--green-dark);
   border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; font-weight: 600;
 }
+
+/* ค้นหาใน topbar */
+.topbar-search { flex: 1; max-width: 340px; margin: 0 12px; }
+.topbar-search input {
+  width: 100%; border: none; border-radius: 999px; padding: 7px 16px;
+  background: rgba(255,255,255,.14); color: #fff; font-size: .9rem;
+}
+.topbar-search input::placeholder { color: rgba(255,255,255,.65); }
+.topbar-search input:focus { outline: 2px solid var(--blue); background: rgba(255,255,255,.22); }
+@media (max-width: 700px) {
+  .topbar-search { max-width: none; margin: 0 0 8px; }
+}
+
+/* แถบแจ้งผลจาก server action */
+.notice {
+  border-color: var(--green); background: var(--green-soft); color: var(--green-dark);
+  font-weight: 600; margin-bottom: 16px;
+}
+.notice.danger { border-color: var(--red); background: var(--red-soft); color: var(--red); }
+
+/* การ์ดเด็ก (/find) */
+.kid-card { margin-bottom: 14px; }
+.kid-card.alert { border-color: var(--red); }
+.kid-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.kid-name { font-size: 1.15rem; font-weight: 700; color: var(--ink); text-decoration: none; }
+.kid-name:hover { color: var(--green); }
+.kid-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.kid-caution {
+  margin: 8px 0 2px; padding: 6px 12px; border-radius: 8px; font-weight: 600;
+  background: var(--red-soft); color: var(--red); border: 1px solid var(--red);
+}
+.kid-meta { display: flex; gap: 12px; flex-wrap: wrap; color: var(--ink-2); font-size: .9rem; margin: 8px 0; align-items: center; }
+.kid-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+.kid-actions .walkin { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+/* ฟอร์มย่อยใน chip/แถวรายการ */
+.chip-more summary { cursor: pointer; color: var(--green); font-size: .82rem; font-weight: 600; }
+.chip-more .stack { display: flex; flex-direction: column; gap: 6px; }
+.booking-chip.waitlist { border-style: dashed; border-color: var(--amber); background: var(--amber-soft); }
+
+/* แถวหน้า "วันนี้ต้องคุย" */
+.call-row {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline;
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.call-row:last-child { border-bottom: none; }
+.call-who { min-width: 180px; display: flex; flex-direction: column; }
+.call-who a { text-decoration: none; color: var(--ink); }
+.call-who a:hover { color: var(--green); }
+.call-why { flex: 1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

@@ -1,5 +1,5 @@
 import { getDb, getSetting } from '@/lib/db';
-import { checkIn, markNoShow, cancelBooking } from '@/lib/actions';
+import { checkIn, markNoShow, cancelBooking, rescheduleBooking, promoteWaitlist, cancelRecurring } from '@/lib/actions';
 
 export const SLOTS = [];
 for (let h = 9; h <= 18; h++) {
@@ -27,7 +27,7 @@ export default function ScheduleGrid({ date, admin = false }) {
     FROM bookings b
     LEFT JOIN members m ON m.id=b.member_id
     LEFT JOIN leads l ON l.id=b.lead_id
-    WHERE b.date=? ORDER BY b.time, b.id`).all(date);
+    WHERE b.date=? ${admin ? '' : "AND b.status!='waitlist'"} ORDER BY b.time, b.id`).all(date);
 
   const cell = new Map();
   for (const b of bookings) {
@@ -74,21 +74,49 @@ export default function ScheduleGrid({ date, admin = false }) {
                           {b.status === 'attended' && <span className="pill green">มาแล้ว</span>}
                           {b.status === 'no_show' && <span className="pill red">ไม่มา</span>}
                           {b.status === 'cancelled' && <span className="pill grey">ยกเลิก</span>}
+                          {b.status === 'waitlist' && <span className="pill amber">รอคิว</span>}
+                          {admin && b.recurring_group && <span className="pill grey" title="นัดประจำรายสัปดาห์">ประจำ</span>}
                         </div>
-                        {admin && b.status === 'booked' && (
+                        {admin && (b.status === 'booked' || b.status === 'waitlist') && (
                           <div className="chip-actions">
-                            <form action={checkIn} className="inline-form">
-                              <input type="hidden" name="booking_id" value={b.id} />
-                              <button className="btn small">เช็คอิน</button>
-                            </form>
-                            <form action={markNoShow} className="inline-form">
-                              <input type="hidden" name="booking_id" value={b.id} />
-                              <button className="btn small danger">ไม่มา</button>
-                            </form>
+                            {b.status === 'booked' ? (
+                              <>
+                                <form action={checkIn} className="inline-form">
+                                  <input type="hidden" name="booking_id" value={b.id} />
+                                  <button className="btn small">เช็คอิน</button>
+                                </form>
+                                <form action={markNoShow} className="inline-form">
+                                  <input type="hidden" name="booking_id" value={b.id} />
+                                  <button className="btn small danger">ไม่มา</button>
+                                </form>
+                              </>
+                            ) : (
+                              <form action={promoteWaitlist} className="inline-form">
+                                <input type="hidden" name="booking_id" value={b.id} />
+                                <button className="btn small">รับเข้า slot</button>
+                              </form>
+                            )}
                             <form action={cancelBooking} className="inline-form">
                               <input type="hidden" name="booking_id" value={b.id} />
                               <button className="btn small ghost">ยกเลิก</button>
                             </form>
+                            <details className="chip-more">
+                              <summary>เลื่อน</summary>
+                              <form action={rescheduleBooking} className="stack" style={{ marginTop: 6 }}>
+                                <input type="hidden" name="booking_id" value={b.id} />
+                                <input type="date" name="date" defaultValue={b.date} required />
+                                <select name="time" defaultValue={b.time}>
+                                  {SLOTS.map((x) => <option key={x} value={x}>{x}</option>)}
+                                </select>
+                                <select name="coach_id" defaultValue={b.coach_id ?? ''}>
+                                  {coaches.map((co) => <option key={co.id} value={co.id}>โค้ช{co.nickname}</option>)}
+                                </select>
+                                <button className="btn small">ย้ายนัด</button>
+                                {b.recurring_group && (
+                                  <button className="btn small danger" formAction={cancelRecurring}>ยกเลิกนัดประจำที่เหลือ</button>
+                                )}
+                              </form>
+                            </details>
                           </div>
                         )}
                       </div>
